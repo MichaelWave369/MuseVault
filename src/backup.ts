@@ -1,40 +1,10 @@
-import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
+import { checkZipHeaders, unzipStored, zipStored } from './zip';
 import { getVersionBlob, importArtifact, listArtifacts, normalizeInput } from './store';
 import { KINDS, MAX_BACKUP, MAX_FILE, SOURCES } from './types';
 import type { Artifact } from './types';
 
 interface Manifest { format: 'musevault-backup'; version: 1; exportedAt: string; artifacts: Artifact[] }
-const ENTRY_LIMIT = 800;
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,100}$/;
-
-export function checkZipHeaders(bytes: Uint8Array): void {
-  if (bytes.length > MAX_BACKUP) throw new Error('Backup ZIP is larger than 60 MB.');
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let end = -1;
-  for (let p = bytes.length - 22; p >= Math.max(0, bytes.length - 65557); p--) {
-    if (view.getUint32(p, true) === 0x06054b50) { end = p; break; }
-  }
-  if (end < 0) throw new Error('Invalid ZIP: central directory not found.');
-  const count = view.getUint16(end + 10, true);
-  const offset = view.getUint32(end + 16, true);
-  const size = view.getUint32(end + 12, true);
-  if (count > ENTRY_LIMIT || count === 65535 || offset === 0xffffffff || offset + size > end) throw new Error('Unsupported or oversized ZIP backup.');
-  let pos = offset;
-  let total = 0;
-  for (let i = 0; i < count; i++) {
-    if (pos + 46 > end || view.getUint32(pos, true) !== 0x02014b50) throw new Error('Invalid ZIP entry.');
-    const flags = view.getUint16(pos + 8, true);
-    const expanded = view.getUint32(pos + 24, true);
-    const nameLength = view.getUint16(pos + 28, true);
-    const extraLength = view.getUint16(pos + 30, true);
-    const commentLength = view.getUint16(pos + 32, true);
-    if ((flags & 1) || expanded === 0xffffffff) throw new Error('Encrypted and ZIP64 backups are unsupported.');
-    total += expanded;
-    if (total > MAX_BACKUP) throw new Error('Uncompressed backup is larger than 60 MB.');
-    pos += 46 + nameLength + extraLength + commentLength;
-  }
-  if (pos !== offset + size) throw new Error('Invalid ZIP central directory size.');
-}
 
 export async function exportBackup(): Promise<Blob> {
   const artifacts = await listArtifacts();
@@ -50,9 +20,9 @@ export async function exportBackup(): Promise<Blob> {
     }
   }
   const manifest: Manifest = { format: 'musevault-backup', version: 1, exportedAt: new Date().toISOString(), artifacts };
-  files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));
+  files['manifest.json'] = new TextEncoder().encode(JSON.stringify(manifest, null, 2));
   if (size + files['manifest.json'].length > MAX_BACKUP) throw new Error('Vault metadata exceeds backup limit.');
-  const zip = zipSync(files, { level: 0 });
+  const zip = zipStored(files);
   return new Blob([Uint8Array.from(zip)], { type: 'application/zip' });
 }
 
@@ -81,11 +51,11 @@ export async function restoreBackup(file: File): Promise<{ imported: number; ski
   if (file.size > MAX_BACKUP) throw new Error('Backup ZIP is larger than 60 MB.');
   const bytes = new Uint8Array(await file.arrayBuffer());
   checkZipHeaders(bytes);
-  const entries = unzipSync(bytes);
+  const entries = unzipStored(bytes);
   const raw = entries['manifest.json'];
   if (!raw || raw.length > 5 * 1024 * 1024) throw new Error('MuseVault manifest missing or oversized.');
   let manifest: Manifest;
-  try { manifest = JSON.parse(strFromU8(raw)) as Manifest; }
+  try { manifest = JSON.parse(new TextDecoder().decode(raw)) as Manifest; }
   catch { throw new Error('Invalid manifest JSON.'); }
   if (manifest.format !== 'musevault-backup' || manifest.version !== 1 || !Array.isArray(manifest.artifacts) || manifest.artifacts.length > 500) {
     throw new Error('This is not a supported MuseVault backup.');
