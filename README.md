@@ -25,7 +25,7 @@ It started with an idea from Dustin: a single repository for his creative artifa
 
 Clearing browser data, using private browsing, losing a device, or storage eviction can **permanently erase your vault**. Export backups regularly and store them safely. Other people with access to your browser profile may be able to access artifacts. Local storage is not encrypted at rest.
 
-Backups are **not encrypted**. ZIP backups are limited to **60 MB**, store a JSON manifest and preserve versions and metadata. Restores check ZIP size, entries, manifest types, declared file sizes and duplicate IDs before writing. Existing IDs are skipped; a restore might partially complete if storage runs out. Don't import untrusted ZIPs.
+Backups are **not encrypted**. MuseVault uses a small original, dependency-free, **uncompressed ZIP** implementation. Restoration supports MuseVault-created ZIP backups only, not general-purpose compressed ZIP archives. ZIP backups are limited to **60 MB**, store a JSON manifest and preserve versions and metadata. Restores check ZIP size, entries, manifest types, declared file sizes and duplicate IDs before writing. Existing IDs are skipped; a restore might partially complete if storage runs out. Don't import untrusted ZIPs.
 
 File previews are best-effort and depend on browser support. Text/code previews are limited to small documents. The offline cache is best-effort and must first be installed online.
 
