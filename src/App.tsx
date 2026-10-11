@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FormEvent, ChangeEvent, DragEvent } from 'react';
+import type { FormEvent, ChangeEvent } from 'react';
 import {
   Archive, ArrowDownToLine, ArrowUpFromLine, BookOpen, Check, ChevronRight, Code2,
   Database, ExternalLink, File, FilePlus2, FileText, FolderClosed, HardDrive,
