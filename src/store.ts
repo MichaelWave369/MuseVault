@@ -20,7 +20,7 @@ function finished(tx: IDBTransaction): Promise<void> {
 export function openVault(): Promise<IDBDatabase> {
   if (!('indexedDB' in globalThis)) return Promise.reject(new Error('This browser does not support local IndexedDB storage.'));
   if (!connection) {
-    connection = new Promise((resolve, reject) => {
+    connection = new Promise<IDBDatabase>((resolve, reject) => {
       const req = indexedDB.open(NAME, 1);
       req.onupgradeneeded = () => {
         const db = req.result;
@@ -35,7 +35,7 @@ export function openVault(): Promise<IDBDatabase> {
       req.onblocked = () => reject(new Error('Close other MuseVault tabs and refresh to upgrade storage.'));
     }).catch(err => { connection = null; throw err; });
   }
-  return connection;
+  return connection!;
 }
 export async function listArtifacts(): Promise<Artifact[]> {
   const db = await openVault();
