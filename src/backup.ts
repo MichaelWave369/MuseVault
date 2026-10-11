@@ -1,4 +1,4 @@
-import { checkZipHeaders, unzipStored, zipStored } from './zip';
+import { unzipStored, zipStored } from './zip';
 import { getVersionBlob, importArtifact, listArtifacts, normalizeInput } from './store';
 import { KINDS, MAX_BACKUP, MAX_FILE, SOURCES } from './types';
 import type { Artifact } from './types';
@@ -50,7 +50,6 @@ function validateArtifact(value: unknown): Artifact {
 export async function restoreBackup(file: File): Promise<{ imported: number; skipped: number }> {
   if (file.size > MAX_BACKUP) throw new Error('Backup ZIP is larger than 60 MB.');
   const bytes = new Uint8Array(await file.arrayBuffer());
-  checkZipHeaders(bytes);
   const entries = unzipStored(bytes);
   const raw = entries['manifest.json'];
   if (!raw || raw.length > 5 * 1024 * 1024) throw new Error('MuseVault manifest missing or oversized.');
