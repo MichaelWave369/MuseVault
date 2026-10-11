@@ -34,3 +34,11 @@ self.addEventListener('fetch', event => {
     return response;
   })));
 });
+
+self.addEventListener('message', event => {
+  if (event.data?.type !== 'PRECACHE' || !Array.isArray(event.data.urls)) return;
+  const urls = event.data.urls.slice(0, 40).filter(url => typeof url === 'string' && url.startsWith(SCOPE));
+  event.waitUntil(caches.open(CACHE).then(cache =>
+    Promise.all(urls.map(url => cache.add(url).catch(() => {})))
+  ));
+});
